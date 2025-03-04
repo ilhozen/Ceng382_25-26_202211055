@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" type="text/css" href="./style.css" />
+        <title>Crafter Login</title>
+    </head>
+    <body>
+        <!-- I want to add audio to my html css file -->
+        <audio id="myAudio">
+            <source src="./resources/tnt.mp3" type="audio/mpeg">
+        </audio>
+      <!-- I need to display a clickable red box that when clicked plays an animation of going down from the top middle of the screen to the middle -->
+      <a href="#animate" class="box" id="animate">
+          <div class="outline"></div>
+          <div class="red"></div>
+          <div class="stripe">TNT</div>
+      </a>
+      <div class="postAnimBackground"></div>
+      <div class="login-box">
+        <div class="pickaxe-carrier">
+            <div class="pickaxe">
+                <div class="handle"></div>
+                <div class="head"></div>
+                <div class="pickL"></div>
+                <div class="pickR"></div>
+            </div>
+        </div>
+            <form>
+                <div class="title">Minecraft Login</div>
+                <div class="form-group">
+                    <input type="text" placeholder="Username"/>
+                </div>
+                <div class="form-group">
+                    <input type="password" placeholder="Password"/>
+                </div>
+                <div class="form-group">
+                    <button type="submit", id="login-but">Login</button>
+                </div>
+                <div class="form-option">
+                    <a href="" class="forgot-password">Forgot Password?</a>
+                    <a href="" class="sign-up">Sign Up</a>
+                </div>
+            </form>
+        </div>
+        <!-- I want to add audio to my html css file -->
+        <script>
+            document.getElementById('animate').addEventListener('click', function(event) {
+                var audio = document.getElementById('myAudio');
+                audio.play();
+            });
+            document.getElementById('login-but').addEventListener('click', function(event){
+                event.preventDefault();
+                // I need this to hyperlink to something
+                window.location.href = '';
+            });
+        </script>
+    </body>
+</html>
