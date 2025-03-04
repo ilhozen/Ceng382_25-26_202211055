@@ -204,6 +204,29 @@ body {
     width: 313px;
     font-size: 25px;
 }
+/* How do I add a realtime clock to my css html website */
+.clock-container {
+    position:absolute;
+    display:flex;
+    align-content: center;
+    justify-content: center;
+    top:20%;
+    left: 0%;
+    font-family: 'minecraft-title';
+    color:white;
+    font-size: 3rem;
+    background: #86868639;
+    padding: 20px;
+    width: max-content;
+    border-style: solid;
+    border-width:8px;
+    border-radius: 1px;
+    border-top-color: green;
+    border-bottom-color: rgb(92, 62, 29);
+    border-right-color: rgb(126, 82, 35);
+    border-left-color: rgb(126, 82, 35);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
 .login-box button {
     font-family: "minecraft";
     font-size: 25px;
