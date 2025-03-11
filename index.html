@@ -42,7 +42,8 @@
                 <input type="password" , id="password" , placeholder="Password" />
             </div>
             <div class="form-group">
-                <button type="submit" , id="login-but">Login</button>
+                <button type="submit" , id="login-but" , onclick="login()">Login</button>
+                <p id="error" style="color: red;"></p>
             </div>
             <div class="form-option">
                 <a href="" class="forgot-password">Forgot Password?</a>
@@ -97,6 +98,22 @@
         setInterval(updateClock, 1000);
 
         updateClock();
+
+        // Use JavaScript to implement the login functionality and redirect.
+        // • Set the default login credentials to:
+        // o Username: admin
+        // o Password: admin
+        // • When a user logs in using these credentials, redirect them to the new page
+        function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            if (username === "admin" && password === "admin") {
+                window.location.href = "table.html"; // Redirect to another page
+            } else {
+                document.getElementById("error").textContent = "Invalid credentials";
+            }
+        }
     </script>
 </body>
 
