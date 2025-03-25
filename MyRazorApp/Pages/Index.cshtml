@@ -1,0 +1,195 @@
+﻿@* Step 2 – Project Structure and Model Class
+• This task will be implemented on the Index page (Index.cshtml and Index.cshtml.cs).
+• Create a folder named Models inside the project folder (note: folder name is plural).
+• Inside this folder, create a class named ClassInformationModel.cs.
+• This class will store the following properties:
+o Id (auto-incremented)
+o ClassName
+o StudentCount
+o Description
+The Id property will be automatically incremented each time a new item is added to the list. The list
+will act like a simple in-memory database *@
+
+@* Step 3 – Page Functionality
+• On the left side of the page, there will be a form that collects:
+o Class Name
+o Student Count
+o Description
+• On the right side, there will be a table that displays all the submitted class data.
+• The table will have the following columns:
+o Id
+o Class Name
+o Student Count
+o Description
+o Actions (Edit and Delete)
+The data should be validated and added to a static list each time the form is submitted. The data will
+then be displayed in the table.
+Step 4 – Requirements and Constraints
+• Use Bootstrap to create a responsive layout with two columns (form on the left, table on the
+right).
+• Use Razor Pages only; no JavaScript is allowed.
+• All operations (Add, Edit, Delete) must be handled using C# methods in the PageModel.
+• Form validation should be done using C# attributes like [Required], [Range], etc.
+• When editing, pre-fill the form with the selected item's data.
+• After deletion or editing, refresh the page and update the table accordingly. *@
+
+@* can you style it with green and brown colors *@
+
+@page
+@model MyRazorApp.Pages.IndexModel
+@{
+    ViewData["Title"] = "Class Management";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f4f1e5;
+            /* Light beige background */
+        }
+
+        .container-custom {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-green {
+            background-color: #4caf50 !important;
+            /* Green */
+            color: white !important;
+        }
+
+        .btn-green:hover {
+            background-color: #388e3c !important;
+        }
+
+        .btn-brown {
+            background-color: #795548 !important;
+            /* Brown */
+            color: white !important;
+        }
+
+        .btn-brown:hover {
+            background-color: #5d4037 !important;
+        }
+
+        .table-header {
+            background-color: #6d4c41;
+            /* Dark brown */
+            color: white;
+        }
+
+        .form-label {
+            color: #4caf50;
+            /* Green */
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <!-- Form Section (Left) -->
+            <div class="col-md-4">
+                <div class="container-custom">
+                    <h3 class="text-success">@(Model.EditId.HasValue ? "Edit Class" : "Add Class")</h3>
+                    <form method="post">
+                        <input type="hidden" asp-for="EditId" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Class Name</label>
+                            <input type="text" class="form-control" asp-for="ClassInfo.ClassName">
+                            <span class="text-danger" asp-validation-for="ClassInfo.ClassName"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Student Count</label>
+                            <input type="number" class="form-control" asp-for="ClassInfo.StudentCount">
+                            <span class="text-danger" asp-validation-for="ClassInfo.StudentCount"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" asp-for="ClassInfo.Description"></textarea>
+                            <span class="text-danger" asp-validation-for="ClassInfo.Description"></span>
+                        </div>
+
+                        @* I want the add/update and cancel buttons to be centered *@
+                        <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button type="submit" asp-page-handler="Add" class="btn btn-green">
+                                @(Model.EditId.HasValue ? "Update" : "Add")
+                            </button>
+                            <a href="Index" class="btn btn-brown">Cancel</a>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+            <!-- Table Section (Right) -->
+            <div class="col-md-8">
+                <div class="container-custom">
+                    <h3 class="text-success">Class List</h3>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr class="table-header">
+                                <th>ID</th>
+                                <th>Class Name</th>
+                                <th>Student Count</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var classInfo in Model.DisplayList)
+                            {
+                                <tr>
+                                    <td>@classInfo.Id</td>
+                                    <td>@classInfo.ClassName</td>
+                                    <td>@classInfo.StudentCount</td>
+                                    <td>@classInfo.Description</td>
+                                    <td>
+                                        <form method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@classInfo.Id" />
+                                            @* How do I Add bootstrap icons tbody my project? *@
+                                            <button type="submit" asp-page-handler="Edit" class="btn btn-brown btn-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                                    <path
+                                                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                                                    <path fill-rule="evenodd"
+                                                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                        <form method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@classInfo.Id" />
+                                            <button type="submit" asp-page-handler="Delete" class="btn btn-danger btn-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
+                                                    <path
+                                                        d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
