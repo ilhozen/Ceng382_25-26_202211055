@@ -64,6 +64,44 @@
 // according to the filtered and paginated data. All logic should be inside the OnGet function.
 
 // My filter system doesnt work but when I fix it the add/update button doesnt work. completely replace the filtering in the code
+
+// This is your task:
+// JSON Export Feature (New Task)
+// • Add a new button to export the data to JSON. There should be two modes:
+// o Unfiltered export (exports the entire data)
+// o Filtered export (exports only the currently filtered rows)
+// • Also add the ability to select specific columns for export:
+// o If no column is selected, export all columns.
+// o If certain columns (e.g., 1st and 4th) are selected, export only those columns.
+// o The selected columns should visually change color to indicate selection.
+// o The exported JSON should contain only the selected column data.
+// 4. Utility Class for JSON Export
+// • Create a new C# class file named Utils.cs.
+// • Inside it, implement a generic method that can export any class to JSON.
+// • The method should work with any model class.
+// • This class must be implemented as a singleton, so it can be accessed from anywhere in the
+// project.
+// 5. Folder Structure Reminder (MVP)
+// Since your project follows the MVP structure in a Razor Pages application:
+// • Place the ClassInformationTable and related data models in the Models folder.
+// • Place the Utils.cs class in a separate folder called Helpers or Utilities.
+// • Place pagination logic, filtering logic, and UI-related code in the appropriate Pages folder.
+// This is the code you are starting with:
+// --source code--
+
+// In this code instead of having checkboxes for the columns I want the columns 
+//themselves to be clickable and when clicked I want the entire column to change
+// color. The json export should still be functional.
+
+// I need the entire column to change color instead of just the header when it is selected.
+
+// I want to get rid of the export filtered button so that it exports filtered automatically if
+//something is filtered and all if nothing is filtered. so basically I want it to export whatever 
+//is visible to the user at that moment.
+
+// The code currently downloads a json file. Now I want it to write to a json file in the file structure of the project.
+
+// I want to get rid of the filter button so it automatically filters as I type.
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Collections.Generic;
@@ -71,6 +109,12 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel.DataAnnotations;
+using MyRazorApp.Helpers;
+using System.Text;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
+
 
 // --- Page Model Definition ---
 namespace MyRazorApp.Pages
@@ -79,6 +123,12 @@ namespace MyRazorApp.Pages
 
     public class IndexModel : PageModel
     {
+        private readonly IWebHostEnvironment _env;
+
+    public IndexModel(IWebHostEnvironment env)
+    {
+        _env = env;
+    }
         private static List<ClassInformationModel> ClassList = new();
         [BindProperty]
         public ClassInformationModel ClassInfo { get; set; } = new();
@@ -100,6 +150,37 @@ namespace MyRazorApp.Pages
 
         public List<ClassInformationTable> DisplayList { get; set; } = new();
 
+        public IActionResult OnPostExportJson(string selectedColumns = "")
+    {
+        try
+        {
+            var data = GetFilteredData();
+            var columns = string.IsNullOrEmpty(selectedColumns) 
+                ? new List<string>() 
+                : selectedColumns.Split(',').ToList();
+
+            string json = Utils.Instance.ExportToJson(data, columns);
+            
+            // Create exports directory if it doesn't exist
+            var exportDir = Path.Combine(_env.ContentRootPath, "Exports");
+            Directory.CreateDirectory(exportDir);
+
+            // Create filename with timestamp
+            var fileName = $"class-export-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+            var filePath = Path.Combine(exportDir, fileName);
+
+            // Write to file
+            System.IO.File.WriteAllText(filePath, json);
+
+            TempData["SuccessMessage"] = $"File exported successfully to Exports folder.";
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"Error exporting file: {ex.Message}";
+        }
+
+        return RedirectToPage(new { Filter, PageNumber });
+    }
         public void OnGet()
         {
             if (!ClassList.Any())
@@ -290,6 +371,22 @@ namespace MyRazorApp.Pages
                 StudentCount = c.StudentCount,
                 Description = c.Description
             }).ToList();
+        }
+
+        private List<ClassInformationModel> GetFilteredData()
+        {
+            IQueryable<ClassInformationModel> query = ClassList.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(Filter))
+            {
+                string lowerFilter = Filter.ToLowerInvariant();
+                query = query.Where(c =>
+                    (c.ClassName != null && c.ClassName.ToLowerInvariant().Contains(lowerFilter)) ||
+                    (c.Description != null && c.Description.ToLowerInvariant().Contains(lowerFilter))
+                );
+            }
+
+            return query.ToList();
         }
     }
 }
