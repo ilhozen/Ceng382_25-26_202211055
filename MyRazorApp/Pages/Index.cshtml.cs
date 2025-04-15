@@ -102,6 +102,12 @@
 // The code currently downloads a json file. Now I want it to write to a json file in the file structure of the project.
 
 // I want to get rid of the filter button so it automatically filters as I type.
+
+//after doing those I get this:
+// IndexModel.OnGet()': not all code paths return a valueCS0161
+// IActionResult IndexModel.OnGet()
+// I put the code in the onget in index.cshtml.cs is that right?
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Collections.Generic;
