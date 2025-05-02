@@ -102,6 +102,16 @@
 // The code currently downloads a json file. Now I want it to write to a json file in the file structure of the project.
 
 // I want to get rid of the filter button so it automatically filters as I type.
+
+// In my Razor Pages Class management system project I had been keeping everything in a list now I want to change
+// it to use an sql database instead. When deleting an item I would like to set isActive to false and make it so 
+//that doesnt show up on the page but that deleted class should still be in the database.
+// Here is the example code to be added given by our instructor you may reference this but dont put too much trust in it:
+//week9 pdf example code
+//my source code
+//Change the index.cshtml.cs file to use the database instead of the list. I don't know if the classinformationmodel 
+//and table files are relevant but I gave them for context.
+//Change what needs to be changed.
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Collections.Generic;
@@ -114,29 +124,29 @@ using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using System.IO;
+using Microsoft.EntityFrameworkCore;
+using MyRazorApp.Models;
+using MyRazorApp.Data;
 
-
-// --- Page Model Definition ---
 namespace MyRazorApp.Pages
 {
-    using MyRazorApp.Models;
-
     public class IndexModel : PageModel
     {
         private readonly IWebHostEnvironment _env;
+        private readonly SchoolDbContext _context;
 
-        public IndexModel(IWebHostEnvironment env)
+        public IndexModel(IWebHostEnvironment env, SchoolDbContext context)
         {
             _env = env;
+            _context = context;
         }
-        private static List<ClassInformationModel> ClassList = new();
+
         [BindProperty]
         public ClassInformationModel ClassInfo { get; set; } = new();
 
         [BindProperty]
         public int? EditId { get; set; }
 
-        // --- Filtering and Pagination Properties ---
         [BindProperty(SupportsGet = true)]
         [DisplayFormat(ConvertEmptyStringToNull = false)]
         public string Filter { get; set; } = string.Empty;
@@ -150,46 +160,12 @@ namespace MyRazorApp.Pages
 
         public List<ClassInformationTable> DisplayList { get; set; } = new();
 
-        public IActionResult OnPostExportJson(string selectedColumns = "")
-        {
-            try
-            {
-                var data = GetFilteredData();
-                var columns = string.IsNullOrEmpty(selectedColumns)
-                    ? new List<string>()
-                    : selectedColumns.Split(',').ToList();
-
-                string json = Utils.Instance.ExportToJson(data, columns);
-
-                // Create exports directory if it doesn't exist
-                var exportDir = Path.Combine(_env.ContentRootPath, "Exports");
-                Directory.CreateDirectory(exportDir);
-
-                // Create filename with timestamp
-                var fileName = $"class-export-{DateTime.Now:yyyyMMdd-HHmmss}.json";
-                var filePath = Path.Combine(exportDir, fileName);
-
-                // Write to file
-                System.IO.File.WriteAllText(filePath, json);
-
-                TempData["SuccessMessage"] = $"File exported successfully to Exports folder.";
-            }
-            catch (Exception ex)
-            {
-                TempData["ErrorMessage"] = $"Error exporting file: {ex.Message}";
-            }
-
-            return RedirectToPage(new { Filter, PageNumber });
-        }
-        public IActionResult OnGet()
+        public async Task<IActionResult> OnGetAsync()
         {
             if (!IsAuthenticated())
                 return RedirectToPage("Login");
-            if (!ClassList.Any())
-            {
-                GenerateSyntheticData();
-            }
-            UpdateDisplayList();
+
+            await UpdateDisplayListAsync();
 
             if (!EditId.HasValue)
             {
@@ -201,31 +177,32 @@ namespace MyRazorApp.Pages
             }
             else
             {
-                if (ClassInfo == null || ClassInfo.Id != EditId.Value)
+                var classToEdit = await _context.Classes.FindAsync(EditId.Value);
+                if (classToEdit != null)
                 {
-                    var classToEdit = ClassList.FirstOrDefault(c => c.Id == EditId.Value);
-                    if (classToEdit != null)
+                    ClassInfo = new ClassInformationModel
                     {
-                        ClassInfo = classToEdit;
-                    }
-                    else
-                    {
-                        TempData["ErrorMessage"] = "The item you were trying to edit could not be found.";
-                        EditId = null;
-                        ClassInfo = new ClassInformationModel();
-                    }
+                        Id = classToEdit.Id,
+                        ClassName = classToEdit.ClassName,
+                        StudentCount = classToEdit.StudentCount,
+                        Description = classToEdit.Description
+                    };
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "The item you were trying to edit could not be found.";
+                    EditId = null;
+                    ClassInfo = new ClassInformationModel();
                 }
             }
             return Page();
         }
 
-        // --- POST Handlers ---
-        public IActionResult OnPostAdd()
+        public async Task<IActionResult> OnPostAddAsync()
         {
-
             if (!ModelState.IsValid)
             {
-                UpdateDisplayList();
+                await UpdateDisplayListAsync();
                 return Page();
             }
 
@@ -233,76 +210,78 @@ namespace MyRazorApp.Pages
 
             if (isUpdate)
             {
-                var existing = ClassList.FirstOrDefault(c => c.Id == EditId.Value);
+                var existing = await _context.Classes.FindAsync(EditId.Value);
                 if (existing != null)
                 {
                     existing.ClassName = ClassInfo.ClassName;
                     existing.StudentCount = ClassInfo.StudentCount;
                     existing.Description = ClassInfo.Description;
+                    await _context.SaveChangesAsync();
                     TempData["SuccessMessage"] = "Class updated successfully.";
                 }
                 else
                 {
                     ModelState.AddModelError(string.Empty, "The item you were trying to edit could not be found. It might have been deleted.");
-                    UpdateDisplayList();
+                    await UpdateDisplayListAsync();
                     return Page();
                 }
                 EditId = null;
             }
-            else // Add new item
+            else
             {
-                int newId = ClassList.Any() ? ClassList.Max(c => c.Id) + 1 : 1;
-                var newClass = new ClassInformationModel
+                var newClass = new Class
                 {
-                    Id = newId,
                     ClassName = ClassInfo.ClassName,
                     StudentCount = ClassInfo.StudentCount,
-                    Description = ClassInfo.Description
+                    Description = ClassInfo.Description,
+                    IsActive = true
                 };
-                ClassList.Add(newClass);
+                _context.Classes.Add(newClass);
+                await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "Class added successfully.";
             }
 
             ClassInfo = new ClassInformationModel();
             ModelState.Clear();
 
-            string currentFilter = this.Filter ?? string.Empty;
-            int currentPage = this.PageNumber;
-
-            return RedirectToPage(new { Filter = currentFilter, PageNumber = currentPage });
+            return RedirectToPage(new { Filter, PageNumber });
         }
 
-        public IActionResult OnPostEdit(int id)
+        public async Task<IActionResult> OnPostEditAsync(int id)
         {
-            this.Filter ??= string.Empty;
+            Filter ??= string.Empty;
 
-            var classToEdit = ClassList.FirstOrDefault(c => c.Id == id);
+            var classToEdit = await _context.Classes.FindAsync(id);
             if (classToEdit != null)
             {
-                ClassInfo = classToEdit;
+                ClassInfo = new ClassInformationModel
+                {
+                    Id = classToEdit.Id,
+                    ClassName = classToEdit.ClassName,
+                    StudentCount = classToEdit.StudentCount,
+                    Description = classToEdit.Description
+                };
                 EditId = id;
             }
             else
             {
                 TempData["ErrorMessage"] = "The item you tried to edit was not found.";
-                string currentFilter = this.Filter ?? string.Empty;
-                int currentPage = this.PageNumber;
-
-                return RedirectToPage(new { Filter = currentFilter, PageNumber = currentPage });
+                return RedirectToPage(new { Filter, PageNumber });
             }
 
-            UpdateDisplayList();
+            await UpdateDisplayListAsync();
             return Page();
         }
 
-        public IActionResult OnPostDelete(int id)
+        public async Task<IActionResult> OnPostDeleteAsync(int id)
         {
-            this.Filter ??= string.Empty;
+            Filter ??= string.Empty;
 
-            var classToDelete = ClassList.FirstOrDefault(c => c.Id == id);
+            var classToDelete = await _context.Classes.FindAsync(id);
             if (classToDelete != null)
             {
-                ClassList.Remove(classToDelete);
+                classToDelete.IsActive = false;
+                await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "Class deleted successfully.";
             }
             else
@@ -310,9 +289,9 @@ namespace MyRazorApp.Pages
                 TempData["ErrorMessage"] = "The item you tried to delete was not found.";
             }
 
-            UpdateDisplayList();
+            await UpdateDisplayListAsync();
 
-            int pageNum = this.PageNumber;
+            int pageNum = PageNumber;
             if (pageNum > TotalPages && TotalPages > 0)
             {
                 pageNum = TotalPages;
@@ -322,51 +301,60 @@ namespace MyRazorApp.Pages
                 pageNum = 1;
             }
 
-
-            string currentFilter = this.Filter ?? string.Empty;
-            return RedirectToPage(new { Filter = currentFilter, PageNumber = pageNum });
+            return RedirectToPage(new { Filter, PageNumber = pageNum });
         }
 
-        // --- Helper Methods ---
-        private void GenerateSyntheticData()
+        public async Task<IActionResult> OnPostExportJson(string selectedColumns = "")
         {
-            ClassList = new List<ClassInformationModel>();
-            for (int i = 1; i <= 105; i++)
+            try
             {
-                ClassList.Add(new ClassInformationModel
-                {
-                    Id = i,
-                    ClassName = $"Class {i:000}",
-                    StudentCount = (i % 15) + 5,
-                    Description = $"Description for Class {i:000}"
-                });
+                var data = await GetFilteredDataAsync();
+                var columns = string.IsNullOrEmpty(selectedColumns)
+                    ? new List<string>()
+                    : selectedColumns.Split(',').ToList();
+
+                string json = Utils.Instance.ExportToJson(data, columns);
+
+                var exportDir = Path.Combine(_env.ContentRootPath, "Exports");
+                Directory.CreateDirectory(exportDir);
+
+                var fileName = $"class-export-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+                var filePath = Path.Combine(exportDir, fileName);
+
+                System.IO.File.WriteAllText(filePath, json);
+
+                TempData["SuccessMessage"] = $"File exported successfully to Exports folder.";
             }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error exporting file: {ex.Message}";
+            }
+
+            return RedirectToPage(new { Filter, PageNumber });
         }
 
-        private void UpdateDisplayList()
+        private async Task UpdateDisplayListAsync()
         {
-            string currentFilter = this.Filter ?? string.Empty;
+            string currentFilter = Filter ?? string.Empty;
 
-            IQueryable<ClassInformationModel> query = ClassList.AsQueryable();
+            IQueryable<Class> query = _context.Classes.Where(c => c.IsActive);
 
             if (!string.IsNullOrWhiteSpace(currentFilter))
             {
                 string lowerFilter = currentFilter.ToLowerInvariant();
                 query = query.Where(c =>
-                    (c.ClassName != null && c.ClassName.ToLowerInvariant().Contains(lowerFilter)) ||
-                    (c.Description != null && c.Description.ToLowerInvariant().Contains(lowerFilter))
+                    (c.ClassName != null && c.ClassName.ToLower().Contains(lowerFilter)) ||
+                    (c.Description != null && c.Description.ToLower().Contains(lowerFilter))
                 );
             }
 
-            TotalItems = query.Count();
-            query = query.OrderBy(c => c.Id);
+            TotalItems = await query.CountAsync();
 
-            // Apply pagination
-            List<ClassInformationModel> pagedList = query
+            var pagedList = await query
+                .OrderBy(c => c.Id)
                 .Skip((PageNumber - 1) * PageSize)
                 .Take(PageSize)
-                .ToList();
-
+                .ToListAsync();
 
             DisplayList = pagedList.Select(c => new ClassInformationTable
             {
@@ -377,21 +365,30 @@ namespace MyRazorApp.Pages
             }).ToList();
         }
 
-        private List<ClassInformationModel> GetFilteredData()
+        private async Task<List<ClassInformationModel>> GetFilteredDataAsync()
         {
-            IQueryable<ClassInformationModel> query = ClassList.AsQueryable();
+            IQueryable<Class> query = _context.Classes.Where(c => c.IsActive);
 
             if (!string.IsNullOrWhiteSpace(Filter))
             {
                 string lowerFilter = Filter.ToLowerInvariant();
                 query = query.Where(c =>
-                    (c.ClassName != null && c.ClassName.ToLowerInvariant().Contains(lowerFilter)) ||
-                    (c.Description != null && c.Description.ToLowerInvariant().Contains(lowerFilter))
+                    (c.ClassName != null && c.ClassName.ToLower().Contains(lowerFilter)) ||
+                    (c.Description != null && c.Description.ToLower().Contains(lowerFilter))
                 );
             }
 
-            return query.ToList();
+            var classes = await query.ToListAsync();
+
+            return classes.Select(c => new ClassInformationModel
+            {
+                Id = c.Id,
+                ClassName = c.ClassName,
+                StudentCount = c.StudentCount,
+                Description = c.Description
+            }).ToList();
         }
+
         private bool IsAuthenticated()
         {
             var sessionUsername = HttpContext.Session.GetString("username");

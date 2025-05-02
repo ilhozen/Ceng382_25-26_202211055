@@ -1,3 +1,8 @@
+//I'm getting the error:
+//A connection was successfully established with the server, but then an error occurred during the login process. 
+// (provider: SSL Provider, error: 0 - The certificate chain was issued by an authority that is not trusted.)
+using Microsoft.EntityFrameworkCore;
+using MyRazorApp.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -9,6 +14,9 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+
+builder.Services.AddDbContext<SchoolDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SchoolDbConnection")));
 
 
 var app = builder.Build();
