@@ -165,7 +165,7 @@ namespace MyRazorApp.Pages
 
             await GenerateSyntheticDataAsync();
 
-            if (!IsAuthenticated())
+            if (!User.Identity.IsAuthenticated)
                 return RedirectToPage("Login");
 
             await UpdateDisplayListAsync();
@@ -411,19 +411,5 @@ namespace MyRazorApp.Pages
             }).ToList();
         }
 
-        private bool IsAuthenticated()
-        {
-            var sessionUsername = HttpContext.Session.GetString("username");
-            var cookieUsername = Request.Cookies["username"];
-            var sessionToken = HttpContext.Session.GetString("token");
-            var cookieToken = Request.Cookies["token"];
-            var sessionId = HttpContext.Session.GetString("session_id");
-            var cookieSessionId = Request.Cookies["session_id"];
-
-            return sessionUsername != null &&
-                   cookieUsername == sessionUsername &&
-                   cookieToken == sessionToken &&
-                   cookieSessionId == sessionId;
-        }
     }
 }

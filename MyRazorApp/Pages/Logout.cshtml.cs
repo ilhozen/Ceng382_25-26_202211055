@@ -1,27 +1,24 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using MyRazorApp.Models;
 
 namespace MyRazorApp.Pages
 {
+    [AllowAnonymous]
     public class LogoutModel : PageModel
     {
-        public IActionResult OnGet()
+        private readonly SignInManager<ApplicationUser> _signInManager;
+
+        public LogoutModel(SignInManager<ApplicationUser> signInManager)
         {
-            // Clear session
-            HttpContext.Session.Clear();
-            
-            // Delete specific cookies with matching options
-            var cookieOptions = new CookieOptions
-            {
-                Secure = true,
-                HttpOnly = true,
-                SameSite = SameSiteMode.Strict
-            };
+            _signInManager = signInManager;
+        }
 
-            Response.Cookies.Delete("username", cookieOptions);
-            Response.Cookies.Delete("token", cookieOptions);
-            Response.Cookies.Delete("session_id", cookieOptions);
-
+        public async Task<IActionResult> OnPostAsync()
+        {
+            await _signInManager.SignOutAsync();
             return RedirectToPage("Login");
         }
     }

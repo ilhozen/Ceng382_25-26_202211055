@@ -5,29 +5,34 @@ using MyRazorApp.Models;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations; // Add this for data annotations
 
 namespace MyRazorApp.Pages
 {
     public class LoginModel : PageModel
     {
-        private readonly IWebHostEnvironment _env;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public LoginModel(IWebHostEnvironment env)
+        public LoginModel(SignInManager<ApplicationUser> signInManager)
         {
-            _env = env;
+            _signInManager = signInManager;
         }
 
         [BindProperty]
+        [Required(ErrorMessage = "Username is required")] // Added Required attribute
         public string Username { get; set; }
 
         [BindProperty]
+        [Required(ErrorMessage = "Password is required")] // Good practice to also have this for Password
+        [DataType(DataType.Password)]
         public string Password { get; set; }
 
         public string ErrorMessage { get; set; }
 
         public IActionResult OnGet()
         {
-            if (IsAuthenticated())
+            if (User.Identity.IsAuthenticated)
                 return RedirectToPage("Index");
             
             return Page();
@@ -35,56 +40,43 @@ namespace MyRazorApp.Pages
 
         public async Task<IActionResult> OnPostAsync()
         {
-            var users = await LoadUsersAsync();
-            var user = users.FirstOrDefault(u => 
-                u.Username == Username && 
-                u.Password == Password && 
-                u.IsActive
-            );
-
-            if (user == null)
+            // Check if the model state is valid (i.e., if [Required] attributes are satisfied)
+            if (!ModelState.IsValid)
             {
-                ErrorMessage = "Invalid username or password";
+                // If not valid, return the page. Validation messages will be displayed
+                // by the <span asp-validation-for="Username"></span> in your .cshtml
                 return Page();
             }
 
-            // Generate token and set session/cookies
-            var token = Guid.NewGuid().ToString();
-            HttpContext.Session.SetString("username", user.Username);
-            HttpContext.Session.SetString("token", token);
-            HttpContext.Session.SetString("session_id", HttpContext.Session.Id);
+            // Proceed with login attempt only if ModelState is valid
+            var result = await _signInManager.PasswordSignInAsync(
+                Username, Password, isPersistent: false, lockoutOnFailure: false);
 
-            var cookieOptions = new CookieOptions
+            if (result.Succeeded)
             {
-                Expires = DateTime.UtcNow.AddMinutes(30),
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict
-            };
-
-            Response.Cookies.Append("username", user.Username, cookieOptions);
-            Response.Cookies.Append("token", token, cookieOptions);
-            Response.Cookies.Append("session_id", HttpContext.Session.Id, cookieOptions);
-
-            return RedirectToPage("Index");
-        }
-
-        private bool IsAuthenticated()
-        {
-            return HttpContext.Session.GetString("username") != null &&
-                   Request.Cookies["username"] == HttpContext.Session.GetString("username") &&
-                   Request.Cookies["token"] == HttpContext.Session.GetString("token") &&
-                   Request.Cookies["session_id"] == HttpContext.Session.GetString("session_id");
-        }
-
-        private async Task<List<User>> LoadUsersAsync()
-        {
-            var path = Path.Combine(_env.WebRootPath, "data", "users.json");
-            if (!System.IO.File.Exists(path))
-                return new List<User>();
-
-            using var stream = new FileStream(path, FileMode.Open);
-            return await JsonSerializer.DeserializeAsync<List<User>>(stream);
+                return RedirectToPage("Index");
+            }
+            else
+            {
+                // If PasswordSignInAsync fails, it's not due to a missing username at this point,
+                // but rather an invalid login attempt.
+                if (result.IsLockedOut)
+                {
+                    ErrorMessage = "This account has been locked out. Please try again later.";
+                }
+                else if (result.IsNotAllowed)
+                {
+                    ErrorMessage = "Login is not allowed for this user. Please confirm your email if required.";
+                }
+                else
+                {
+                    ErrorMessage = "Invalid username or password.";
+                }
+                // Add the error to ModelState to display it with other validation summaries if you have one,
+                // or rely on the ErrorMessage property as you are.
+                // ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                return Page();
+            }
         }
     }
 }

@@ -9,10 +9,6 @@
       "PackagePath": "staticwebassets\\css\\site.css"
     },
     {
-      "Id": "C:\\Users\\corey\\OneDrive\\Desktop\\GitHub\\Ceng382_25-26_202211055\\MyRazorApp\\wwwroot\\data\\users.json",
-      "PackagePath": "staticwebassets\\data\\users.json"
-    },
-    {
       "Id": "C:\\Users\\corey\\OneDrive\\Desktop\\GitHub\\Ceng382_25-26_202211055\\MyRazorApp\\wwwroot\\favicon.ico",
       "PackagePath": "staticwebassets\\favicon.ico"
     },
