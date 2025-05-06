@@ -162,6 +162,9 @@ namespace MyRazorApp.Pages
 
         public async Task<IActionResult> OnGetAsync()
         {
+
+            await GenerateSyntheticDataAsync();
+
             if (!IsAuthenticated())
                 return RedirectToPage("Login");
 
@@ -333,6 +336,25 @@ namespace MyRazorApp.Pages
             return RedirectToPage(new { Filter, PageNumber });
         }
 
+        private async Task GenerateSyntheticDataAsync()
+        {
+            if (!await _context.Classes.AnyAsync())
+            {
+                var classes = new List<Class>();
+                for (int i = 1; i <= 105; i++)
+                {
+                    classes.Add(new Class
+                    {
+                        ClassName = $"Class {i:000}",
+                        StudentCount = (i % 15) + 5,
+                        Description = $"Description for Class {i:000}",
+                        IsActive = true
+                    });
+                }
+                await _context.Classes.AddRangeAsync(classes);
+                await _context.SaveChangesAsync();
+            }
+        }
         private async Task UpdateDisplayListAsync()
         {
             string currentFilter = Filter ?? string.Empty;
